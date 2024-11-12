@@ -4,6 +4,8 @@ use std::{
     process,
 };
 
+use crate::lexer::Lexer;
+
 pub struct Rox {
     pub had_error: bool,
 }
@@ -35,12 +37,19 @@ impl Rox {
                 break;
             }
 
-            Rox::run(&line)
+            Rox::run(&line);
+
+            line.clear();
         }
     }
 
     pub fn run(src: &str) {
-        todo!()
+        for token in Lexer::new(src) {
+            match token {
+                Ok(token) => println!("{token}"),
+                Err(e) => println!("Lexing error: {}", e),
+            }
+        }
     }
 
     pub fn error(&mut self, line: i32, message: &str) {

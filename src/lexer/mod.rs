@@ -6,16 +6,13 @@ use token::{Token, TokenKind};
 
 #[derive(Default)]
 pub struct Lexer {
-    source: String,
     rest: String,
-    offset: usize,
     line: usize,
 }
 
 impl Lexer {
     pub fn new(source: &str) -> Self {
         Lexer {
-            source: source.to_string(),
             rest: source.to_string(),
             ..Lexer::default()
         }
@@ -57,13 +54,7 @@ impl Lexer {
                 uno(one)
             };
 
-            enum Longer {
-                Slash,
-                String,
-                Number,
-            }
-
-            let begin = match c {
+            match c {
                 '\n' => {
                     self.line += 1;
                     continue;
@@ -83,14 +74,7 @@ impl Lexer {
                 '=' => return duo('=', TokenKind::Equal, TokenKind::EqualEqual),
                 '<' => return duo('=', TokenKind::Less, TokenKind::LessEqual),
                 '>' => return duo('=', TokenKind::Greater, TokenKind::GreaterEqual),
-                '/' => Longer::Slash,
-                '"' => Longer::String,
-                '0'..='9' => Longer::Number,
-                _ => return Some(Err(anyhow!("{}, Unexpected character: '{}'", self.line, c))),
-            };
-
-            match begin {
-                Longer::Slash => {
+                '/' => {
                     if self.rest.starts_with('/') {
                         // skip comment
                         let end = self.rest.find('\n').unwrap_or(self.rest.len());
@@ -100,30 +84,34 @@ impl Lexer {
                         return uno(TokenKind::Slash);
                     }
                 }
-                Longer::String => {
-                    match self.rest.find('"') {
-                        Some(end) => {
-                            // count newlines
-                            let nl = self.rest[..end].chars().filter(|c| *c == '\n').count();
+                '"' => return self.string(),
+                '0'..='9' => return self.number(c),
+                c if is_alpha(Some(c)) => return self.identifier(c),
+                _ => return Some(Err(anyhow!("{}, Unexpected character: '{}'", self.line, c))),
+            };
+        }
+    }
 
-                            let literal = self.rest[..end].to_string();
-                            let result = Some(Ok(Token::new(
-                                TokenKind::String(literal.clone()),
-                                format!("\"{literal}\""),
-                                self.line,
-                            )));
-                            self.line += nl;
+    fn string(&mut self) -> Option<Result<Token>> {
+        match self.rest.find('"') {
+            Some(end) => {
+                // count newlines
+                let nl = self.rest[..end].chars().filter(|c| *c == '\n').count();
 
-                            // skip closing quote
-                            self.rest = self.rest[end + 1..].to_string();
+                let literal = self.rest[..end].to_string();
+                let result = Some(Ok(Token::new(
+                    TokenKind::String(literal.clone()),
+                    format!("\"{literal}\""),
+                    self.line,
+                )));
+                self.line += nl;
 
-                            return result;
-                        }
-                        None => return Some(Err(anyhow!("Unterminated string: {}", self.line))),
-                    }
-                }
-                Longer::Number => return self.number(c),
+                // skip closing quote
+                self.rest = self.rest[end + 1..].to_string();
+
+                result
             }
+            None => Some(Err(anyhow!("Unterminated string: {}", self.line))),
         }
     }
 
@@ -151,17 +139,67 @@ impl Lexer {
         )))
     }
 
+    fn identifier(&mut self, c: char) -> Option<Result<Token>> {
+        let mut lexeme = c.to_string();
+        while is_alphanumeric(self.peek()) {
+            lexeme.push(self.advance().expect("we peeked"));
+        }
+
+        if let Some(kind) = match_keyword(&lexeme) {
+            return Some(Ok(Token::new(kind, lexeme, self.line)));
+        }
+
+        Some(Ok(Token::new(TokenKind::Identifier, lexeme, self.line)))
+    }
+
     fn is_at_end(&self) -> bool {
         self.rest.is_empty()
     }
 }
 
 fn is_digit(c: Option<char>) -> bool {
-    if c.is_none() {
-        return false;
+    match c {
+        Some(c) => c.is_ascii_digit(),
+        None => false,
     }
+}
 
-    c.unwrap().is_digit(10)
+fn is_alpha(c: Option<char>) -> bool {
+    match c {
+        Some(c) => c.is_ascii_alphabetic() || c == '_',
+        None => false,
+    }
+}
+
+fn is_alphanumeric(c: Option<char>) -> bool {
+    match c {
+        Some(c) => c.is_ascii_alphanumeric() || c == '_',
+        None => false,
+    }
+}
+
+fn match_keyword(s: &str) -> Option<TokenKind> {
+    let kind = match s {
+        "and" => TokenKind::And,
+        "class" => TokenKind::Class,
+        "else" => TokenKind::Else,
+        "false" => TokenKind::False,
+        "for" => TokenKind::For,
+        "fun" => TokenKind::Fun,
+        "if" => TokenKind::If,
+        "nil" => TokenKind::Nil,
+        "or" => TokenKind::Or,
+        "print" => TokenKind::Print,
+        "return" => TokenKind::Return,
+        "super" => TokenKind::Super,
+        "this" => TokenKind::This,
+        "true" => TokenKind::True,
+        "var" => TokenKind::Var,
+        "while" => TokenKind::While,
+        _ => return None,
+    };
+
+    Some(kind)
 }
 
 impl Iterator for Lexer {

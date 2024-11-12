@@ -1,13 +1,13 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use rox::lexer::Lexer;
+use rox::{interpreter::Rox, lexer::Lexer};
 use std::{fs, path::PathBuf};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -19,7 +19,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Tokenize { filename } => {
+        Some(Commands::Tokenize { filename }) => {
             let file_contents = fs::read_to_string(filename).expect("Failed to read file");
 
             for token in Lexer::new(&file_contents) {
@@ -30,6 +30,7 @@ fn main() -> Result<()> {
             }
             println!("EOF null");
         }
+        None => Rox::run_prompt(),
     }
 
     Ok(())
