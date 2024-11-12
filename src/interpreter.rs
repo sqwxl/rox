@@ -4,8 +4,6 @@ use std::{
     process,
 };
 
-use crate::lexer::Lexer;
-
 pub struct Rox {
     pub had_error: bool,
 }
@@ -14,7 +12,7 @@ impl Rox {
     pub fn run_file(&self, path: &str) {
         let source = fs::read_to_string(path).expect("Failed to read file");
 
-        Rox::run(source);
+        Rox::run(&source);
 
         if self.had_error {
             process::exit(65);
@@ -37,13 +35,12 @@ impl Rox {
                 break;
             }
 
-            Rox::run(line.clone())
+            Rox::run(&line)
         }
     }
 
-    pub fn run(src: String) {
-        let lexer = Lexer::new(&src);
-        let tokens: Vec<Token> = lexer.();
+    pub fn run(src: &str) {
+        todo!()
     }
 
     pub fn error(&mut self, line: i32, message: &str) {
