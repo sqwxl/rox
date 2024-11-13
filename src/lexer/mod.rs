@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Result};
 
-pub mod token;
+mod token;
 
-use token::{Token, TokenKind};
+pub use token::{Token, TokenKind};
 
 #[derive(Default)]
 pub struct Lexer {
@@ -75,7 +75,7 @@ impl Lexer {
                 '<' => return duo('=', TokenKind::Less, TokenKind::LessEqual),
                 '>' => return duo('=', TokenKind::Greater, TokenKind::GreaterEqual),
                 '/' => {
-                    if self.rest.starts_with('/') {
+                    if self.peek() == Some('/') {
                         // skip comment
                         let end = self.rest.find('\n').unwrap_or(self.rest.len());
                         self.rest = self.rest[end..].to_string();

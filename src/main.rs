@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use rox::{interpreter::Rox, lexer::Lexer};
+use rox::{Lexer, Rox};
 use std::{fs, path::PathBuf};
 
 #[derive(Parser)]
